@@ -1,0 +1,544 @@
+| \gScala: The Hidden Gem of the JVM
+
+| https://bitbucket.org/skedulo/engineeringmeeting
+
+| Static typing is to a good programmer what a spell checker is to a
+|  good writer. -- Peter Van Roy
+
+
+
+---
+| \g Prelude
+
+We would never do this
+
+```
+def add(a: Any, b: Any) = ???
+```
+--
+
+or would we? :wink:
+
+```
+def add(a, b):
+    "Adding two values the Python way"
+    return a + b
+```
+---
+| \g Static Typing
+
+We have chosen a typed language that enforces some restrictions at
+compile time
+
+
+```
+def add(a: Int, b: Int): Int = a + b
+
+val foo: String = "foo"
+
+add(foo, 2)
+```
+---
+
+I think we can all agree that this is a sane thing to do
+
+But can we do better?
+
+---
+| \g Almost Good Enough
+
+We have all seen code like this
+
+```
+case class Point(latitude: Double, longitude: Double)
+```
+
+which superficially seems good enough until
+
+```
+val lat = 42.0
+val lng = -10.0
+
+val point = Point(lng, lat)
+def fireNukeAt(point: Point): Unit == ???
+```
+--
+
+The compiler can't help us in this case :weary:
+---
+| \g Value Classes
+
+There is a standard pattern to solve this issue and ensure values go to the right
+positions
+
+```
+case class Lat(lat: Double) extends AnyVal
+
+case class Lng(lng: Double) extends AnyVal
+
+case class Point(lat: Lat, lng: Lng)
+
+val point= Point(Lng(42.0), Lat(-10.0))
+```
+
+Slightly more effort declaring a few types ensures silly mistakes
+won't happen. 
+
+And thanks to \rAnyVal\s there's no runtime overhead :+1:
+---
+| \g Detour: A Tale About Greyhounds
+
+```
+class Greyhound {
+ 
+  def run: Greyhound = {
+    println("Running, running, running!")
+    new Greyhound
+  }
+ 
+  def sleep: Greyhound = {
+    println("Zzzz ...")
+    new Greyhound
+  }
+}
+```
+
+Business rules:
+
+1) After running, a Greyhound is exhausted
+
+2) An exhausted Greyhound needs to sleep before she can run again
+
+---
+| \gPhantom Types
+
+Phantom types are never instantiated
+
+```
+object Greyhound {
+ 
+  sealed trait State
+  object State {
+    sealed trait Rested extends State
+    sealed trait Exhausted extends State
+  }
+}
+```
+---
+| \gGreyhounds are Lazy
+
+```
+class Greyhound[S <: Greyhound.State] {
+  import Greyhound._
+  def run(implicit ev: S =:= State.Rested): Greyhound[State.Exhausted] = {
+    println("Running, running, running!")
+    new Greyhound
+  }
+ 
+  def sleep: Greyhound[State.Rested] = {
+    println("Zzzz ...")
+    new Greyhound
+  }
+}
+
+object Greyhound {
+ 
+  sealed trait State
+  object State {
+    sealed trait Rested extends State
+    sealed trait Exhausted extends State
+  }
+  def rested: Greyhound[State.Rested] = new Greyhound
+  def exhausted: Greyhound[State.Exhausted] = new Greyhound
+}
+```
+---
+| \g Kinds
+
+Let's stop here for a moment and reflect
+
+What is
+
+```
+// Value level function of type Int => Int
+def foo(a: Int): Int 
+
+// Type level function of kind * => *
+type Result[A] = Either[String, A] 
+
+// Higher order function of type (Int => Int) => Int
+def apply(f: Int => Int): Int 
+
+// Higher kinded type (2nd order) of kind (* => *) => *
+trait Functor[F[_]]
+```
+
+Context-independent type-level functions (limited to induction via
+recursion, no value level transformation, no type equivalence testing,
+i.e. no branching, etc.)
+
+Type classes are type-level functions with context (messy but more
+powerful)
+---
+
+| \g Phantom Types as Type Tags
+
+Now that we've introduced Phantom Types, we can look at another use
+case: Unboxed type tags
+
+* type Tagged[A, B] = A with B
+* Tagged[A,B] is subtype of A
+* This is an alternative to defining value classes
+
+```
+type Tagged[A, T] = A with T
+type @@[T, Tag] = Tagged[T, Tag]
+
+def tag[U] = new Aux[U]
+	    
+class Aux[U] {
+  def apply[T](t : T) : T @@ U = t.asInstanceOf[T @@ U]
+}
+```
+---
+| \gQuantities and Things
+
+With this lightweight implementation of type tags, we can now
+implement some poor mans phyisical quantities and do calculations on
+them
+
+```
+trait Meter
+trait Second
+trait MetersPerSecond
+
+def Meter(a: Double): Double @@ Meter = tag[Meter](a)
+def Second(a: Double): Double @@ Second = tag[Second](a)
+def MetersPerSecond(a: Double): Double @@ MetersPerSecond = tag[MetersPerSecond](a)
+
+def velocity(
+  d: Double @@ Meter, 
+  t: Double @@ Second
+): Double @@ MetersPerSecond = MetersPerSecond(d / t)
+```
+--
+
+For a more elaborate example of representing quantities, their units
+of measure, and their dimensional relationship check out the
+exceptional \rSquants\s library.
+
+---
+| \gIt's Just a String
+
+```
+class EmailAddress(email: String)
+```
+
+or is it?
+--
+
+<addr-spec>     ::= <user-name> "@" <domain> ["." <domain>]+ 
+<user-name>     ::= ...
+<domain>        ::= ...
+
+```
+val regex =   """^[_A-Za-z0-9-\+]+(\.[_A-Za-z0-9-]+)*@[A-Za-z0-9-]+(\.[A-Za-z0-9]+)*(\.[A-Za-z]{2,})$""".r
+```
+ 
+---
+| \gContextual
+
+Small Scala library for defining: 
+
+  * string interpolators— prefixed string literals which determine how
+  they are interpreted at compile-time
+ 
+  * custom checks and compile errors
+
+while only writing ordinary "user" code :muscle:
+
+```
+val email: EmailAddress = email"akoestler@skedulo.com"
+```
+
+---
+| \gContextual String Interpolators
+
+```
+case class EmailAddress(address: String)
+
+private val validEmail: Regex =
+  """^[_A-Za-z0-9-\+]+(\.[_A-Za-z0-9-]+)*@[A-Za-z0-9-]+(\.[A-Za-z0-9]+)*(\.[A-Za-z]{2,})$""".r
+
+object EmailParser extends Interpolator {
+
+  type Output = EmailAddress
+
+  def contextualize(interpolation: StaticInterpolation): Seq[ContextType] = {
+    
+    interpolation.parts.foreach {
+      case lit@Literal(_, string) =>
+        if(validEmail.findFirstMatchIn(string).isEmpty)
+          interpolation.abort(lit, 0, "this is not a valid email address")
+    
+      case hole@Hole(_, _) =>
+        interpolation.abort(hole, "substitutions are not supported")
+    }
+
+    Nil
+  }
+
+  def evaluate(contextual: RuntimeInterpolation): EmailAddress =
+    EmailAddress(contextual.parts.mkString)
+
+}
+
+implicit class EmailStringContext(sc: StringContext) { val email = Prefix(EmailParser, sc) }
+
+```
+
+---
+| \gType Refinements
+
+Let's revisit the earlier Lat/Lng example
+
+```
+case class Lat(lat: Double) extends AnyVal
+
+case class Lng(lng: Double) extends AnyVal
+```
+--
+
+Additional constraints:
+
+* The valid range for a latitude is [-90.0, 90.0]
+
+* The valid range for longitude is [-180.0, 180.0]
+
+Can we express these constraint in the Scala type system?
+
+---
+| \g Refined Lat/Lng types
+
+Now we can rewrite our Lat/Lng types
+
+```
+case class Lat(
+  lat: Double Refined Interval.Closed[W.`-90.0`.T,W.`90.0`.T]
+)
+
+case class Lng(
+  lng: Double Refined Interval.Closed[W.`-180.0`.T, W.`180.0`.T]
+)
+```
+---
+| \gRefined
+
+Scala library for refining types with type-level predicates which
+constrain the set of values described by the refined type
+
+Predicates combine
+
+Predicates follow a subtyping relationship
+
+---
+| \gRefined Predicates
+
+Refined has predefined predicates for
+
+* Booleans
+
+* Collections
+
+* Strings
+
+* Numericals
+
+* More
+
+Numeric predicates:
+
+* Less[N]: checks if a numeric value is less than N
+
+* LessEqual[N]: checks if a numeric value is less than or equal to N
+
+* Greater[N]: checks if a numeric value is greater than N
+
+* GreaterEqual[N]: checks if a numeric value is greater than or equal to N
+
+* Positive: checks if a numeric value is greater than zero
+
+* NonPositive: checks if a numeric value is zero or negative
+
+* Negative: checks if a numeric value is less than zero
+
+* NonNegative: checks if a numeric value is zero or positive
+
+* Interval.Open[L, H]: checks if a numeric value is in the interval (L, H)
+
+* Interval.OpenClosed[L, H]: checks if a numeric value is in the interval (L, H]
+
+* Interval.ClosedOpen[L, H]: checks if a numeric value is in the interval [L, H)
+
+* Interval.Closed[L, H]: checks if a numeric value is in the interval[L, H]
+
+---
+| \g Runtime Values for Refined Types
+
+Of course, most of our data is not hardcoded, but comes from external
+sources. 
+
+If you try to define a single variable and pass it to refine, it will
+complain at compile time about a type mismatch. 
+
+How do we solve this?
+
+Refined itself provides the solution by allowing us to use the same
+refined types we defined for validation
+
+```
+type NonEmptyString = String Refined NonEmpty
+
+abstract class FirstName private (name: NonEmptyString) 
+
+object FirstName {
+  def validated(s: String)(implicit ev: Validate[String, NonEmpty]): Either[String, FirstName] = 
+    refineV[NonEmpty](s).map(new FirstName(_) {})
+}
+ 
+---
+| \g Pure Config
+
+Let's assume you have the following \rapplication.conf\s:
+
+```
+val conf = parseString("""{
+  server.interface="0.0.0.0"
+  server.port=8080
+}""")
+
+```
+
+Using \rPureConfig\s loading the config file is trivial
+
+```
+import pureconfig.loadConfig
+
+case class Server(interface: Int, port: Int)
+case class Settings(server: Server)
+
+val config: Settings = loadConfig[Settings](conf) match {
+  case Right(c) => c
+  case Left(ex) =>
+    println(s"Error loading configuration: $ex.\nProgram will now exit.")
+    throw new Exception(ex.toString)
+}
+```
+---
+| \g PureConfig and Refined Types
+
+
+But some changes, although wrong, will go unnoticed:
+
+```
+val conf = parseString("""{
+  server.interface="0.0.0.0"
+  server.port=808
+}""")
+
+```
+
+We can catch those errors by using refined with PureConfig:
+
+```
+import pureconfig.loadConfig
+import eu.timepit.refined.pureconfig._
+
+
+type NonEmptyString = String Refined NonEmpty
+type ServerPort     = Int Refined Greater[W.`1024`.T]
+
+case class Server(interface: NonEmptyString, port: ServerPort)
+case class Settings(server: Server)
+
+val config: Settings = loadConfig[Settings](conf) match {
+  case Right(c) => c
+  case Left(ex) =>
+    println(s"Error loading configuration: $ex.\nProgram will now exit.")
+    throw new Exception(ex.toString)
+}  
+```
+
+---
+| \gDatabase Integration
+
+
+Assume we have the following model
+
+```
+type NonEmptyString = String Refined NonEmpty
+
+case class FirstName(name: NonEmptyString) extends AnyVal
+
+case class LastName(name: NonEmptyString) extends AnyVal
+
+case class Person(firstName: FirstName, lastName: LastName)
+```
+
+We can now simply run the following query in Doobie to build our case
+class:
+
+```
+def getAllPersons[M[_]](xa: Transactor[M]) =
+    sql"SELECT firstName, lastName FROM Person"
+      .query[Person]
+      .process
+      .list
+      .transact(xa)
+```
+
+This works as of Doobie 0.4.2 - How awesome is it to navigate the
+typelevel product space :+1:
+
+---
+| \gRecap
+
+* We can define models that, by virtue of their types, make it
+  impossible to have invalid states like a Person without a name or a
+  Latitude of -200.0 degrees. We know that when we send data to
+  another service, or render the details on a website, that the values
+  will be present and within their specifications.
+
+* We can use refinement types to implement strongly typed
+  configuration avoiding common pitfalls like typos, bad selection of
+  ports, etc.
+
+* We enforce, at compile time, that all the data that is used to
+  generate our internal model has been validated. 
+
+* As our model disallows invalid states, we can assume that all the
+  data in a database is compliant
+
+I hope I could show that we can utlise Scala's type system to bring
+the benefits of type safety, finding errors at compile time, and
+banish invalid state from models, configuration, and database -
+No diminishing returns and minimal boilerplate on top, 
+
+---
+| \g References
+
+* Squants (quantities, units of measure, dimensions) - https://github.com/typelevel/squants
+
+* Refined (type refinements) - https://github.com/fthomas/refined
+
+* Shapeless (type tags and lots of other goodies) -
+  https://github.com/milessabin/shapeless
+
+* Contextual (compile time string interpolation) -
+  https://github.com/propensive/contextual
+
+* PureConfig (sane config wrapper for typesafe config) -
+  https://github.com/pureconfig/pureconfig
+
+* Doobie (pure functional jdbc layer) -
+  https://github.com/tpolecat/doobie

@@ -1,0 +1,299 @@
+| \gThe Seven Layers of Scala
+
+| "2003 - A drunken Martin Odersky sees a Reese's Peanut Butter Cup ad 
+| featuring somebody's peanut butter getting on somebody else's chocolate 
+| and has an idea. He creates Scala, a language that unifies constructs
+| from both object oriented and functional languages. This pisses off both 
+| groups and each promptly declares jihad."
+
+James Iry from 'A Brief, Incomplete, and Mostly Wrong History of Programming Languages'
+
+| Max Bo
+
+---
+
+| \gAbout me
+
+- 3rd year Computer Science @ UQ
+- Currently interning at Skedulo
+- I really like functional programming
+
+| If you have any questions, ping \g@mb\s on the UQCS Slack
+| You can typically find me shitposting in \g#functional\s 
+
+---
+
+| I won't mention some stuff that you'll see in the slides
+| Please interupt
+
+---
+
+Why you should care
+
+- It's a drop in replacement for Java that smooths over almost all of its major issues
+--
+- It's a good functional language that
+  + Doesn't force you to write in a functional style, thus
+    * Not alienating group members when you force them to use Scala
+    * Providing escape hatches back into OOP-ville
+  + Has a robust ecosystem with above average documentation
+  + Less than absurd syntax
+  + Has decent heavy-duty IDE support
+--
+- A functinal language that has is accepted, if not embraced, by large enterprise
+ organisation
+--
+- A language with top notch libraries
+- Jobs
+- Unlikely to be shot down by higher ups
+
+
+
+---
+
+
+| \gLayer 0
+
+---
+
+| \gIt's still Java
+
+```
+object Mutable2DPoint {
+  val ORIGIN = new Mutable2DPoint(0, 0)
+}
+
+class Mutable2DPoint(private var x: Double, private var y: Double) {
+
+  import Mutable2DPoint._
+
+  def getX = x
+
+  def getY() = -y
+
+  def setX(x: Double) {
+	this.x = x
+  }
+
+  def setY(y: Double) {
+	this.y = y
+  }
+}
+```
+
+---
+
+| \gNo need for super()
+
+```
+class Mutable3DPoint(x: Double, y: Double, var z: Double) extends Mutable2DPoint(x, y)
+
+val p1 = new Mutable3DPoint(1, 2, 3)
+p1.setX(3)
+```
+
+--
+
+```
+val gotX = p1.getX
+val gotY = p1.getY()
+val gotZ = p1.z
+
+```
+--
+
+```
+val gotOrigin = Mutable2DPoint.ORIGIN
+```
+
+---
+
+
+| \gSeamless interop
+
+```
+import java.time
+
+val now = java.time.LocalDateTime.now()
+```
+
+---
+
+| \gLayer 1
+
+---
+
+| \gStrings are decent
+
+```
+println("hello world".length)
+println("hello world".substring(2, 6))
+println("hello world".replace("C", "3"))
+println("hello world".take(5))
+println("hello world".drop(5))
+```
+
+---
+
+| \gString interpolation
+
+```
+{ 
+  val x = 5
+  val y = 6
+  println(s"We can interpolate the value of x, which is $x into the string")
+  println(s"The sum of x and y is ${x + y}")
+}
+```
+
+---
+
+| \gNon-painful datastructure initialization
+
+\bList<Integer> xs = new ArrayList<>(Arrays.asList(1, 3, 5));
+
+/
+
+```
+val xs = List(1, 3, 5)
+
+xs == (1 to 5 by 2) // true
+```
+
+---
+
+
+\bHashMap<String, String> h = new HashMap<String, Integer>() {{ put("a", 1); }};
+
+/
+
+```
+val s2i = Map("a" ->  1)
+
+s2i.withDefaultValue(-1)("b") // -1
+```
+
+---
+
+| \gTuples
+
+```
+val tuple = (1, 2, "three")
+
+tuple._1 // 1
+```
+
+---
+
+
+
+
+| \gNon-awful FP syntax
+
+\bList<String> ys = xs.stream().map(x -> Integer.toString(x).collect(Collectors.toList()));
+
+/
+
+```
+val ys = xs.map(x => x.toString)
+```
+
+---
+
+```
+xs.map(_ + 1)
+```
+
+--
+
+```
+xs.filter(_ < 5)
+```
+
+--
+
+```
+xs.reduce(_ + _)
+```
+
+---
+
+| \gNon-garbage lambdas
+
+\blocal variables referenced from a lambda expression must be final or effectively final
+
+```
+{ 
+var x = 5
+
+val f = () => x += 1
+
+f()
+
+x
+}
+```
+
+---
+
+| \gDefaults and keyword arguments
+
+```
+def addWithDefault(x: Int = 5, y: Int) = { x + y }
+
+addWithDefault(y = 6)
+```
+
+---
+
+| \g Case Classes
+
+```
+class StandardMessage(from: String, to: String, body: String)
+
+val sm1 = new StandardMessage("me", "someone else", "wyd?")
+val sm2 = new StandardMessage("me", "someone else", "wyd?")
+
+println(sm1)
+println(sm1 == sm2)
+println(sm1.hashCode == sm2.hashCode)
+```
+
+--
+
+```
+sm1.body
+```
+
+---
+
+
+```
+case class CaseMessage(from: String, to: String, body: String)
+
+val cm1 = CaseMessage("me", "someone else", "wyd?")
+val cm2 = CaseMessage("me", "someone else", "wyd?")
+
+println(cm1)
+println(cm1 == cm2)
+println(cm1.hashCode == cm2.hashCode)
+```
+
+--
+
+```
+cm1.body
+```
+
+---
+
+| \bCase clases
+
+```
+abstract class Action
+case class Message(to: Integer, body: String) extends Action
+case class AddFriend(id: Integer) extends Action
+case class Disconnect extends Action
+
+
+
