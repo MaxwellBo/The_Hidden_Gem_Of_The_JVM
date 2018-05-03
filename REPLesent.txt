@@ -2,41 +2,49 @@
 
 ---
 
+```
+import java.time
+
+val now = java.time.LocalDateTime.now()
+```
+
+---
+
 
 \gJava
 
 ```
 import java.util.Objects;
 
-public class Point {
-    public final int x;
-    public final int y;
+public class Person {
+    public final String name;
+    public final int age;
 
-    public Point(int x, int y) {
-        this.x = x;
-        this.y = y;
+    public Person(String name, int age) {
+        this.name = name;
+        this.age = age;
     }
-
 
     @Override
     public boolean equals(Object o) {
         if (this == o) return true;
         if (o == null || getClass() != o.getClass()) return false;
-        Point point = (Point) o;
-        return x == point.x &&
-                y == point.y;
+        Person person = (Person) o;
+        return age == person.age &&
+                Objects.equals(name, person.name);
     }
 
     @Override
     public int hashCode() {
-        return Objects.hash(x, y);
+
+        return Objects.hash(name, age);
     }
 
     @Override
     public String toString() {
-        return "Point{" +
-                "x=" + x +
-                ", y=" + y +
+        return "Person{" +
+                "name='" + name + '\'' +
+                ", age=" + age +
                 '}';
     }
 }
@@ -46,8 +54,29 @@ public class Point {
 
 \gScala
 
+
 ```
-case class Point(x: Int, y: Int)
+case class Person(name: String, age: Int)
+
+val alice = Person("Alice", 18) // r
+val bob   = Person("Bob", 18)
+```
+
+--
+```
+alice.age = 15
+```
+--
+```
+// immutable copy using structural sharing
+val olderBob = bob.copy(age = 20)
+println(bob)      // prints "Person(Bob, 18)"
+println(olderBob) // prints "Person(Bob, 20)"
+
+val parallelBob = Person("Bob", 18) // r
+
+// Value equality by default
+bob == parallelBob // true
 ```
 
 ---
@@ -137,9 +166,10 @@ def staticChecker(statementNode: StatementNode) = {
 | \gPattern matching
 
 ```
-val Pattern = r"([a-cA-C])"
+val Pattern = "([a-cA-C])".r
 
-def matchExample(x: AnyVal): Unit = {
+//                  v never do this!
+def matchExample(x: Any): String = {
   x match {
     case i: Int     => "Matched on type. Bound $i"
     case 1          => "Matched on a literal"
@@ -147,7 +177,7 @@ def matchExample(x: AnyVal): Unit = {
     case x if 0 until 10 contains x => s"Matched with guard. Bound $x"
     case ab@(a, b)  => "Matched + destructure a tuple. Keep original tuple bound to ab"
     case x::xs      => s"Match + destructure a list. Bound head as $x, tail as $xs"
-    case Pattern(c) => "c bound to capture group. This will fail if the Regex doesn't match."
+    case Pattern(c) => s"Extracted capture group $c. This will fail if the Regex doesn't match."
     case _          => "Matching wildcard"
   }
 }
@@ -155,98 +185,94 @@ def matchExample(x: AnyVal): Unit = {
 
 ---
 
-
-
-| \gSeamless interop
+\gCar
 
 ```
-import java.time
+class Car {
+    private int wheels;
+    private String color;
 
-val now = java.time.LocalDateTime.now()
-```
+    public Car() {
+      this.wheels = 4 // default
+      this.color = "Red" // default
 
----
+    }
 
+    public String getColor() {
+        return color;
+    }
 
-| \gNon-awful FP syntax
+    public void setColor(final String color) {
+        this.color = color;
+    }
 
-\bList<String> ys = xs.stream().map(x -> Integer.toString(x).collect(Collectors.toList()));
+    public int getWheels() {
+        return wheels;
+    }
 
-/
+    public void setWheels(final int wheels) {
+        this.wheels = wheels;
+    }
 
-```
-val ys = xs.map(x => x.toString)
-```
-
----
-
-```
-xs.map(_ + 1)
-```
-
---
-
-```
-xs.filter(_ < 5)
-```
-
---
-
-```
-xs.reduce(_ + _)
+    @Override
+    public String toString() {
+        return "Car [wheels = " + wheels + ", color = " + color + "]";
+    }
+}
 ```
 
 ---
 
-| \gTuples
+```
+class CarBuilder {
+    private Car car;
+
+    public CarBuilderImpl() {
+        car = new Car();
+    }
+
+    public Car build() {
+        return car;
+    }
+
+    public CarBuilder setColor(final String color) {
+        car.setColor(color);
+        return this;
+    }
+
+    public CarBuilder setWheels(final int wheels) {
+        car.setWheels(wheels);
+        return this;
+    }
+}
+```
+---
 
 ```
-val tuple = (1, 2, "three")
+public class SomeClass {
+    // ...
+    public someMethod() {
+        // ...
+        return builder.setWheels(3)
+                      .build();
+        // ...
+    }
+    // ...
+}
 
-tuple._1 // 1
 ```
 
 ---
 
-| \gString interpolation
+\gScala
 
 ```
-val x = 5
-val y = 6
-println(s"We can interpolate the value of x, which is $x into the string")
-println(s"The sum of x and y is ${x + y}")
-```
+case class Car(wheels: Int = 4, color: String = "Red")
 
----
-
-| \gNon-painful datastructure initialization
-
-\bList<Integer> xs = new ArrayList<>(Arrays.asList(1, 3, 5));
-
-/
-
-```
-val xs = List(1, 3, 5)
-
-xs == (1 to 5 by 2) // true
+val threeWheeledCar = Car(wheels = 3)
 ```
 
 ---
-
-
-\bHashMap<String, String> h = new HashMap<String, Integer>() {{ put("a", 1); }};
-
-/
-
-```
-val s2i = Map("a" ->  1)
-
-s2i.withDefaultValue(-1)("b") // -1
-```
-
----
-
-| \gDefaults and keyword arguments
 
 ```
 def addWithDefault(x: Int = 5, y: Int) = { x + y }
@@ -255,102 +281,71 @@ addWithDefault(y = 6)
 ```
 
 ---
-# Why Scala - Language
 
-* "Object-Oriented Meets Functional"
---
+\bList<Integer> numbers = new ArrayList<>(Arrays.asList(1, 3, 5));
 
-* Powerful & flexible type system
-  * Allows very different styles of programming
-  * Smooth transition from imperative to functional style
+\bList<String> strings = xs.stream().map(x -> Integer.toString(x)).collect(Collectors.toList()));
 
 --
-* Lean Standard Lib
-  * Immutable by default, mutable when required
-  * Common data structures & utilities
-  * Async primitives (Future)
-
----
-
-# Why Scala - Platform
-
-* Java Virtual Machine (JVM)
-    * One of the best VMs in terms of performance and stability
-    * Great ecosystem for monitoring, debugging and benchmarks
---
-* Javascript via **Scala.js**
-    * Full Scala except advanced reflection
---
-* Native via **Scala Native**
-    * Fast startup & better control over memory
-
-
----
-
-# Why Scala - Ecosystem
-
-* Use Scala / Java / Kotlin libraries
-    * Great libraries for backend development
-    * First-class client libraries for most domains
---
-* In Scala ecosystem itself
-    * Libraries that embraces immutability, RT, and lack of reflections
-    * Fluid DSLs enabled by Scala language features
---
-* Contributions from Twitter, Stripe, REA Group, etc
-
----
 
 ```
-case class Person(name: String, age: Int)
+val numbers = List(1, 3, 5)
 
-val alice = Person("Alice", 18)
-val bob   = Person("Bob", 18)
+val strings = numbers.map(x => x.toString)
 
-alice.age = 15
-```
 --
-```scala
-// immutable copy using structural sharing
-val olderBob = bob.copy(age = 20)
-println(bob)      // prints "Person(Bob, 18)"
-println(olderBob) // prints "Person(Bob, 20)"
 
-val parallelBob = Person("Bob", 18)
-
-// Value equality by default
-bob == parallelBob // true
-bob == alice // false
-```
----
-
-# Collection - List
-
-```scala
-val numbers = List(1, 2, 3, 4)
-```
---
-```scala
 val biggerNumbers = numbers.map(n => n * 2)
 val biggerNumbers2 = numbers.map(_ * 2)
-// List(2, 4, 6, 8)
-```
+// List(2, 6, 10)
+
 --
-```scala
-// Immutable! Our list cannot be mutated accidentally
-someFunction(numbers)
 
 // Value equality for collection types too!
-numbers == List(1, 2, 3, 4) // true
+numbers == List(1, 3, 5) // true
+numbers == (1 to 5 by 2) // true
+```
+
+---
+
+```
+// type alias
+type WorldId = String
+// case classes generate hashCode() method automatically
+// which allows you to use them in HashMaps!
+val tracker: Map[Person, WorldId] = Map(
+  alice       -> "42",
+  bob         -> "42",
+  parallelBob -> "1",
+)
+```
+--
+```
+tracker.get(alice) // Some("42")
+```
+--
+
+```
+tracker.get(Person("Tom", 12)) // None
+```
+
+--
+```
+// Find the sum of the ages of everyone from world 42
+tracker
+  .filter { case (person, world) => world == "42" }
+  .map { case (person, world) => person.age }
+  .reduce(_ + _)
+// 18
 ```
 ---
-# Collections - Option
-```scala
+
+```
 // Scala's Option is used to represent nullability
 def parseInt(str: String): Option[Int] = ...
 ```
 --
-```scala
+```
 parseInt("1") // Some(1)
 parseInt("nope") // None
 ```
@@ -364,43 +359,15 @@ def parseAndPlus(str: String): String = {
 }
 ```
 --
-```scala
+```
 parseAndPlus("3")   // "3 plus one is 4"
 parseAndPlus("x")   // "Not a number!"
 ```
 
 ---
-# Collections - Map
+| \gExample - Using Java APIs
 
-```scala
-// type alias
-type WorldId = String
-// case classes generate hashCode() method automatically
-// which allows you to use them in HashMaps!
-val tracker: Map[Person, WorldId] = Map(
-  alice       -> "42",
-  bob         -> "42",
-  parallelBob -> "1",
-)
 ```
---
-```scala
-tracker.get(alice) // Some("42")
-tracker.get(Person("Tom", 12)) // None
-```
-
---
-```scala
-// Find the age of everyone from world 42
-tracker
-  .filter((person, world) => world == "42")
-  .map((person, _) => person.age)
-// List(18, 18)
-```
-
----
-# Example - Using Java APIs
-```scala
 // Option.apply will handle nulls for us
 Option(mightReturnNull()) match {
   case Some(i) => print(i)
@@ -418,7 +385,7 @@ val javaMap = someJavaMethod(scalaList.asJava)
 val scalaMap = javaMap.asScala
 ```
 --
-```scala
+```
 try {
   val date = java.time.LocalDate.parse(input)
   Right(date.getYear)
@@ -656,6 +623,56 @@ class: middle, center
 * https://www.scala-exercises.org
 * https://gitter.im/scala/scala for help & discussions
 * A real project is the best way to learn!
+
+---
+
+---
+
+| \gWhy Scala - Language
+
+ "Object-Oriented Meets Functional"
+--
+
+- Powerful & flexible type system
+  + Allows very different styles of programming
+  + Smooth transition from imperative to functional style
+
+--
+- Lean Standard Lib
+  + Immutable by default, mutable when required
+  + Common data structures & utilities
+  + Async primitives (Future)
+
+---
+
+| \gWhy Scala - Platform
+
+- Java Virtual Machine (JVM)
+  + One of the best VMs in terms of performance and stability
+  + Great ecosystem for monitoring, debugging, packaging, IDE integration, testing, security
+--
+- Javascript via Scala.js
+    + Full Scala except advanced reflection
+--
+* Native via Scala Native
+    * Fast startup & better control over memory
+
+---
+
+| \gWhy Scala - Ecosystem
+
+- Use Scala / Java / Kotlin libraries
+  + Great libraries for backend development
+  + First-class client libraries for most domains
+--
+- In Scala ecosystem itself
+  + Libraries that embraces immutability, referential transparency, and lack of reflection
+  + Fluid Domain Specific Languages enabled by Scala language features
+--
+- Contributions from Twitter, Stripe, REA Group, etc
+
+
+
 
 ---
 # Conclusion
