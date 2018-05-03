@@ -2,15 +2,6 @@
 
 ---
 
-```
-import java.time
-
-val now = java.time.LocalDateTime.now()
-```
-
----
-
-
 \gJava
 
 ```
@@ -328,7 +319,6 @@ tracker.get(alice) // Some("42")
 ```
 tracker.get(Person("Tom", 12)) // None
 ```
-
 --
 ```
 // Find the sum of the ages of everyone from world 42
@@ -342,15 +332,17 @@ tracker
 
 ```
 // Scala's Option is used to represent nullability
-def parseInt(str: String): Option[Int] = ...
+def parseInt(str: String): Option[Int] = Try(str.toInt).toPtion
 ```
 --
+
 ```
 parseInt("1") // Some(1)
 parseInt("nope") // None
 ```
 --
-```scala
+
+```
 def parseAndPlus(str: String): String = {
   parseInt(str) match {
     case Some(num) => s"$num plus one is ${num + 1}"
@@ -359,6 +351,7 @@ def parseAndPlus(str: String): String = {
 }
 ```
 --
+
 ```
 parseAndPlus("3")   // "3 plus one is 4"
 parseAndPlus("x")   // "Not a number!"
@@ -375,8 +368,17 @@ Option(mightReturnNull()) match {
 }
 ```
 
---
-```scala
+---
+
+```
+import java.time
+
+val now = java.time.LocalDateTime.now()
+```
+
+---
+
+```
 import scala.collection.JavaConverters._
 
 // someJavaMethod takes java.util.List
@@ -384,7 +386,9 @@ import scala.collection.JavaConverters._
 val javaMap = someJavaMethod(scalaList.asJava)
 val scalaMap = javaMap.asScala
 ```
---
+
+---
+
 ```
 try {
   val date = java.time.LocalDate.parse(input)
@@ -393,12 +397,30 @@ try {
   case e: java.time.format.DateTimeParseException => Left(e)
 }
 ```
+---
+
+```
+import scala.util.{Try, Success, Failure}
+
+def divideStrings(e: String, o: String): Try[Int] = {
+  for {
+    dividend <- Try(e.toInt)
+    divisor <- Try(o.toInt)
+    answer <- Try(dividend / divisor)
+  } yield answer
+}
+```
 
 ---
-# Example - Async & Parallel
 
-```scala
-import monix.eval.Task // and some other imports...
+
+| \gAsync & Parallel
+
+```
+import monix.eval.Task
+import monix.execution.Scheduler.Implicits.global
+import scala.util.Random
+
 
 // Convert a side effecting function into a task
 val t: Task[Int] = Task {
@@ -408,22 +430,32 @@ val t: Task[Int] = Task {
   seconds
 }
 ```
---
-```scala
-// Manipulate Tasks as if they are values
-val tasks = List(t, t, t)
+---
+```
+import scala.concurrent.duration._
+import scala.concurrent.Await
 
-// Run our 3 tasks in parallel!
+// Manipulate Tasks as if they are values
+val tasks: List[Task[Int]] = List(t, t, t)
+
+// Bind all tasks together, so that we can run them in parallel later on
 val grouped: Task[List[Int]] = Task.gather(tasks)
 
-// Run our task at the boundary of our program
-Await.result(grouped.runAsync, 10.seconds)
+// Do stuff with our parallel tasks, that haven't even executed yet
+val incremented = grouped.map(times => times.map(_ * 100))
 ```
----
-# Example - Implicits
+
 --
 
-```scala
+```
+// Run our task at the boundary of our program
+val result = Await.result(incremented.runAsync, 10.seconds)
+```
+---
+| \gImplicits
+--
+
+```
 case class Context(userId: String)
 
 def fetchUserName()(implicit ctx: Context): Task[UserInfo] = {
@@ -431,7 +463,7 @@ def fetchUserName()(implicit ctx: Context): Task[UserInfo] = {
 }
 ```
 --
-```scala
+```
 // Usage:
 implicit val myContext = Context("some-user-id")
 
@@ -439,20 +471,21 @@ fetchUserName()
 // no need to pass the context explicitly. It is implicitly passed in
 ```
 --
-```scala
+```
 fetchUserName()(Context("another-user-id"))
 ```
 ---
 
-# Example - Going Functional
-```scala
+| \gGoing Functional
+
+```
 // Summarise these balance books!
 val balance1 = Map("John" -> 5, "Mary" -> 10)
 val balance2 = Map("John" -> 5, "Mary" -> 10, "Bob" -> 3)
 ```
 
 --
-```scala
+```
 import cats.implicits._
 import cats.kernel.Monoid
 
@@ -462,40 +495,45 @@ balance1 |+| balance2
 // Map(John -> 10, Mary -> 20, Bob -> 3)
 ```
 --
-```scala
+```
 val balanceBooks = List(balance1, balance2, balance3)
 
 val result = balanceBooks.fold
 // combine all our balance books into one
 ```
 ---
-# Example - JSON
+| \gJSON
 
-```scala
+```
+import io.circe._
+import io.circe.generic.semiauto._
+
 case class Person(name: String, age: Int)
 object Person {
-  // Using the library Circe
-  implicit val encoder = deriveEncoder[Person]
-  implicit val decoder = deriveDecoder[Person]
+  implicit val encoder: Encoder[Person] = deriveEncoder[Person]
+  implicit val decoder: Decoder[Person] = deriveDecoder[Person]
 }
 ```
 --
-```scala
+```
 // Encoding
 Person("Alice", 20).asJson.noSpaces
 // {"name":"Alice","age":20}
 ```
 --
-```scala
+
+```
 decode[Person]("""{"name": "Alice", "age": 20}""")
 // Right(Person(Alice, 20))
 
 decode[Person]("""{"name": 5}""")
 // Left(DecodingFailure(String, List(DownField(name))))
 ```
+
 ---
-# Example - JSON (2)
-```scala
+| \gJSON (2)
+
+```
 decodeAccumulating[Person]("""{"name": 0}""")
 //Invalid(NonEmptyList(
 //  DecodingFailure(String, List(DownField(name))),
@@ -503,7 +541,8 @@ decodeAccumulating[Person]("""{"name": 0}""")
 //))
 ```
 --
-```scala
+
+```
 // Encoding & Decode complex structures
 val jsonObj = Map(
   "1" -> Person("Alice", 20),
@@ -512,227 +551,10 @@ val jsonObj = Map(
 // {"1":{"name":"Alice","age":20},"2":{"name":"Bob","age":20}}
 ```
 --
-```scala
+
+```
 decode[Map[String, Person]](jsonObj)
 // Right(Map("1" -> Person("Alice",20), "2" -> Person("Bob",20)))
-```
----
-class: middle, center
-# Scala at Skedulo
-
----
-# How it started
-
-* Scala was chosen because of JVM + Better Java
---
-
-* No prior Scala experience
---
-
-* Lots of blocking, uncontrolled side effects & exceptions
-
---
-* A major bug due to Future not being referentially transparent
-    * Good motivational example for using IO/Task!
-
----
-# Today
-
-* Task & FP using Cats
---
-
-* Write expressive code & use types to help prevent bugs
---
-
-* Zero NPE, deadlocks or race conditions for the last ~1.5 years
---
-
-* Continue to learn and experiment
----
-
-class: middle, center
-
-# Scala Criticisms
-
----
-
-# Scala Criticisms
-* Slow compile times?
-    * Near-realtime feedback in IDE (IntelliJ)
-    * Use incremental compile & hot JVM (`~compile` in SBT)
-    * Continuous improvements in compilation speed
-
---
-
-* Implicits are hard to find/debug?
-    * Requires discipline & established convention
-    * Put them in canonical place: the companion object
-
----
-
-# Scala Criticisms (2)
-* Advanced FP is cumbersome / I want my Zygomorphism
---
-
-    * e.g. subtyping interferes with type inference or unification
---
-    * Mixing OO and FP is hard
-    * Gets easier as tools & compiler improve
---
-    * Free Monads / Extensible Effects / Recursion Schemes all have
-      well documented & battle-tested implementations
-
----
-# Making Scala work for your team
---
-
-* Code reviews
---
-
-* Choose your code convention and libraries based on your team's capabilities
-and goals
---
-
-* Start small, slow down & share knowledge
---
-
-* Try new things, but keep it simple
-
----
-# My personal experience
-
-* Friendly & helpful community with lots of well maintained/documented projects
---
-
-* Awesome roadmap & transparent development of Scala compiler & friends
---
-
-* Less time avoiding/fixing bugs == more time solving the actual problem!
----
-
-class: middle, center
-# Learning Scala
-
----
-
-# Where do I start?
-
-* **Scala for the Impatient** or **Programming in Scala**
-* https://docs.scala-lang.org/tour/tour-of-scala.html
-* https://scastie.scala-lang.org (REPL)
-* https://www.scala-exercises.org
-* https://gitter.im/scala/scala for help & discussions
-* A real project is the best way to learn!
-
----
-
----
-
-| \gWhy Scala - Language
-
- "Object-Oriented Meets Functional"
---
-
-- Powerful & flexible type system
-  + Allows very different styles of programming
-  + Smooth transition from imperative to functional style
-
---
-- Lean Standard Lib
-  + Immutable by default, mutable when required
-  + Common data structures & utilities
-  + Async primitives (Future)
-
----
-
-| \gWhy Scala - Platform
-
-- Java Virtual Machine (JVM)
-  + One of the best VMs in terms of performance and stability
-  + Great ecosystem for monitoring, debugging, packaging, IDE integration, testing, security
---
-- Javascript via Scala.js
-    + Full Scala except advanced reflection
---
-* Native via Scala Native
-    * Fast startup & better control over memory
-
----
-
-| \gWhy Scala - Ecosystem
-
-- Use Scala / Java / Kotlin libraries
-  + Great libraries for backend development
-  + First-class client libraries for most domains
---
-- In Scala ecosystem itself
-  + Libraries that embraces immutability, referential transparency, and lack of reflection
-  + Fluid Domain Specific Languages enabled by Scala language features
---
-- Contributions from Twitter, Stripe, REA Group, etc
-
-
-
-
----
-# Conclusion
-
-* Scala is a production-ready language with amazing ecosystem, tools and community
---
-
---
-
-* Come join us!
-
----
-
-# That's all, folks
-* Questions?
-
-* Find me on:
-    * almostfunctional.com
-    * @jatcwang
-    * Contact me if you need help :)
----
-
-# Bonus - The production bug
-
-```scala
-function[A]monitor(f: => Future[A]): Future[A] = {
-  // attach a callback when future completes
-  // (handle both successful and unsuccesful result)
-  f.onComplete { res =>
-    ...
-  }
-  f
-}
-
-monitor(Future {
-  println("Hi")
-})
-
-// prints Hi twice :(
-```
-
----
-# Bonus - Dotty
-
-```scala
-object Main extends App {
-
-  // First class union types!
-  def intOrString(in: Int | String) = {
-    in match {
-      case _: Int => println("Int")
-      case _: String => println("String")
-    }
-  }
-
-  override def main(args: Array[String]) = {
-    intOrString(23)
-    intOrString("hello")
-  }
-}
 ```
 
 ---
@@ -990,7 +812,7 @@ Small Scala library for defining:
 while only writing ordinary "user" code :muscle:
 
 ```
-val email: EmailAddress = email"akoestler@skedulo.com"
+val email: EmailAddress = email"max@maxbo.me"
 ```
 
 ---
@@ -1115,6 +937,41 @@ Numeric predicates:
 * Interval.Closed[L, H]: checks if a numeric value is in the interval[L, H]
 
 ---
+
+```
+val refines: Int Refined Positive = 5
+
+// If the value does not satisfy the predicate, we get a meaningful
+// compile error:
+val doesntRefine: Int Refined Positive = -5
+// error: Predicate failed: (-5 > 0).
+//  val doesntRefine: Int Refined Positive = -5
+//                                           ^
+
+```
+
+---
+| \g Subtyping
+
+```
+val a: Int Refined Greater[W.`5`.T] = 10
+// a: Int Refined Greater[Int(5)] = 10
+
+// Since every value greater than 5 is also greater than 4, `a` can be
+// ascribed the type Int Refined Greater[W.`4`.T]:
+val b: Int Refined Greater[W.`4`.T] = a
+// b: Int Refined Greater[Int(4)] = 10
+
+// An unsound ascription leads to a compile error:
+val c: Int Refined Greater[W.`6`.T] = a
+// error: type mismatch (invalid inference):
+//  Greater[Int(5)] does not imply
+//  Greater[Int(6)]
+//        val c: Int Refined Greater[W.`6`.T] = a
+```
+
+
+---
 | \g Runtime Values for Refined Types
 
 Of course, most of our data is not hardcoded, but comes from external
@@ -1129,6 +986,13 @@ Refined itself provides the solution by allowing us to use the same
 refined types we defined for validation
 
 ```
+val userPositive: Either[String, Int Refined Positive] = refineV(userInput)
+// userPositive: Either[String, Int] = Right(55)
+
+```
+
+
+
 type NonEmptyString = String Refined NonEmpty
 
 abstract class FirstName private (name: NonEmptyString) 
@@ -1137,6 +1001,7 @@ object FirstName {
   def validated(s: String)(implicit ev: Validate[String, NonEmpty]): Either[String, FirstName] = 
     refineV[NonEmpty](s).map(new FirstName(_) {})
 }
+```
  
 ---
 | \g Pure Config
@@ -1229,9 +1094,6 @@ def getAllPersons[M[_]](xa: Transactor[M]) =
       .transact(xa)
 ```
 
-This works as of Doobie 0.4.2 - How awesome is it to navigate the
-typelevel product space :+1:
-
 ---
 | \gRecap
 
@@ -1274,3 +1136,154 @@ No diminishing returns and minimal boilerplate on top,
 
 * Doobie (pure functional jdbc layer) -
   https://github.com/tpolecat/doobie
+
+* Circe (JSON) -
+  https://circe.github.io/circe/
+
+* Monix (Lazy Parallel Async) -
+  https://monix.io/
+
+
+---
+* Task & FP using Cats
+--
+
+* Write expressive code & use types to help prevent bugs
+--
+
+* Zero NPE, deadlocks or race conditions for the last ~1.5 years
+--
+
+* Continue to learn and experiment
+---
+
+class: middle, center
+
+# Scala Criticisms
+
+---
+
+# Scala Criticisms
+* Slow compile times?
+    * Near-realtime feedback in IDE (IntelliJ)
+    * Use incremental compile & hot JVM (`~compile` in SBT)
+    * Continuous improvements in compilation speed
+
+--
+
+* Implicits are hard to find/debug?
+    * Requires discipline & established convention
+    * Put them in canonical place: the companion object
+
+---
+
+# Scala Criticisms (2)
+* Advanced FP is cumbersome / I want my Zygomorphism
+--
+
+    * e.g. subtyping interferes with type inference or unification
+--
+    * Mixing OO and FP is hard
+    * Gets easier as tools & compiler improve
+--
+    * Free Monads / Extensible Effects / Recursion Schemes all have
+      well documented & battle-tested implementations
+
+---
+# Making Scala work for your team
+--
+
+* Code reviews
+--
+
+* Choose your code convention and libraries based on your team's capabilities
+and goals
+--
+
+* Start small, slow down & share knowledge
+--
+
+* Try new things, but keep it simple
+
+---
+# My personal experience
+
+* Friendly & helpful community with lots of well maintained/documented projects
+--
+
+* Awesome roadmap & transparent development of Scala compiler & friends
+--
+
+* Less time avoiding/fixing bugs == more time solving the actual problem!
+---
+
+class: middle, center
+# Learning Scala
+
+---
+
+| \gWhere do I start?
+
+- Scala for the Impatient** or **Programming in Scala**
+* https://docs.scala-lang.org/tour/tour-of-scala.html
+* https://scastie.scala-lang.org (REPL)
+* https://www.scala-exercises.org
+* https://gitter.im/scala/scala for help & discussions
+* A real project is the best way to learn!
+
+---
+
+---
+
+| \gWhy Scala - Language
+
+- Powerful & flexible type system
+  + Allows very different styles of programming
+  + Smooth transition from imperative to functional style
+
+--
+- Lean Standard Lib
+  + Immutable by default, mutable when required
+  + Common data structures & utilities
+  + Async primitives (Future)
+
+---
+
+| \gWhy Scala - Platform
+
+- Java Virtual Machine (JVM)
+  + One of the best VMs in terms of performance and stability
+  + Great ecosystem for monitoring, debugging, packaging, IDE integration, testing, security
+--
+- Javascript via Scala.js
+    + Full Scala except advanced reflection
+--
+* Native via Scala Native
+    * Fast startup & better control over memory
+
+---
+
+| \gWhy Scala - Ecosystem
+
+- Use Scala / Java / Kotlin libraries
+  + Great libraries for backend development
+  + First-class client libraries for most domains
+--
+- In Scala ecosystem itself
+  + Libraries that embraces immutability, referential transparency, and lack of reflection
+  + Fluid Domain Specific Languages enabled by Scala language features
+--
+- Contributions from Twitter, Stripe, REA Group, etc
+
+---
+|  \gConclusion
+
+- Scala is a production-ready language with amazing ecosystem, tools and community
+--
+
+--
+
+* Come join us!
+
+---
+
