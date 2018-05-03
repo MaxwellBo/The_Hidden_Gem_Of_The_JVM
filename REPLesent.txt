@@ -58,6 +58,7 @@ val bob   = Person("Bob", 18)
 alice.age = 15
 ```
 --
+
 ```
 // immutable copy using structural sharing
 val olderBob = bob.copy(age = 20)
@@ -302,6 +303,7 @@ numbers == (1 to 5 by 2) // true
 ```
 // type alias
 type WorldId = String
+
 // case classes generate hashCode() method automatically
 // which allows you to use them in HashMaps!
 val tracker: Map[Person, WorldId] = Map(
@@ -311,6 +313,7 @@ val tracker: Map[Person, WorldId] = Map(
 )
 ```
 --
+
 ```
 tracker.get(alice) // Some("42")
 ```
