@@ -1,14 +1,729 @@
 | \gScala: The Hidden Gem of the JVM
 
-| https://bitbucket.org/skedulo/engineeringmeeting
+---
+
+
+\gJava
+
+```
+import java.util.Objects;
+
+public class Point {
+    public final int x;
+    public final int y;
+
+    public Point(int x, int y) {
+        this.x = x;
+        this.y = y;
+    }
+
+
+    @Override
+    public boolean equals(Object o) {
+        if (this == o) return true;
+        if (o == null || getClass() != o.getClass()) return false;
+        Point point = (Point) o;
+        return x == point.x &&
+                y == point.y;
+    }
+
+    @Override
+    public int hashCode() {
+        return Objects.hash(x, y);
+    }
+
+    @Override
+    public String toString() {
+        return "Point{" +
+                "x=" + x +
+                ", y=" + y +
+                '}';
+    }
+}
+```
+
+---
+
+\gScala
+
+```
+case class Point(x: Int, y: Int)
+```
+
+---
+
+StatementVisitor.java
+
+```
+public interface StatementVisitor {
+    void visitBlockNode( StatementNode.BlockNode node );
+    void visitStatementErrorNode( StatementNode.ErrorNode node );
+    void visitStatementListNode( StatementNode.ListNode node );
+    void visitAssignmentNode( StatementNode.AssignmentNode node);
+    void visitWriteNode( StatementNode.WriteNode node);
+    void visitCallNode( StatementNode.CallNode node);
+    void visitIfNode( StatementNode.IfNode node);
+    void visitWhileNode( StatementNode.WhileNode node);
+}
+```
+
+---
+
+\gStatementNode.java
+
+```
+public abstract class StatementNode {
+    // ...
+    public abstract void accept( StatementVisitor visitor );
+    // ...
+}
+
+public static class BlockNode extends StatementNode {
+    protected DeclNode.DeclListNode procedures;
+    protected StatementNode body;
+    protected Scope blockLocals;
+    // ... garbage 
+        @Override
+        public void accept( StatementVisitor visitor ) {
+            visitor.visitBlockNode( this );
+        }
+    // ... more garbage
+}
+
+// ... other implementing classes
+
+```
+
+---
+
+\gStaticChecker.java
+
+```
+public class StaticChecker implements StatementVisitor {
+    // ...
+    
+    public void visitBlockNode(BlockNode node) {
+      // ...
+    }
+
+    // ...
+}
+```
+
+---
+
+\gScala
+
+```
+sealed trait StatementNode
+
+case class BlockNode(
+  procedures: DeclNode.DeclListNode,
+  body: StatementNode,
+  blockLocals: Scope
+) extends StatementNode
+// ... other implementing types
+
+def staticChecker(statementNode: StatementNode) = {
+  statementNode match {
+    case BlockNode(procedures, body, blockLocals) => {
+      // here we can use procedures, body, and blockLocals!
+    }
+  }
+}
+```
+---
+
+| \gPattern matching
+
+```
+val Pattern = r"([a-cA-C])"
+
+def matchExample(x: AnyVal): Unit = {
+  x match {
+    case i: Int     => "Matched on type. Bound $i"
+    case 1          => "Matched on a literal"
+    case 2 | 3      => "Matched on union of literals"
+    case x if 0 until 10 contains x => s"Matched with guard. Bound $x"
+    case ab@(a, b)  => "Matched + destructure a tuple. Keep original tuple bound to ab"
+    case x::xs      => s"Match + destructure a list. Bound head as $x, tail as $xs"
+    case Pattern(c) => "c bound to capture group. This will fail if the Regex doesn't match."
+    case _          => "Matching wildcard"
+  }
+}
+```
+
+---
+
+
+
+| \gSeamless interop
+
+```
+import java.time
+
+val now = java.time.LocalDateTime.now()
+```
+
+---
+
+
+| \gNon-awful FP syntax
+
+\bList<String> ys = xs.stream().map(x -> Integer.toString(x).collect(Collectors.toList()));
+
+/
+
+```
+val ys = xs.map(x => x.toString)
+```
+
+---
+
+```
+xs.map(_ + 1)
+```
+
+--
+
+```
+xs.filter(_ < 5)
+```
+
+--
+
+```
+xs.reduce(_ + _)
+```
+
+---
+
+| \gTuples
+
+```
+val tuple = (1, 2, "three")
+
+tuple._1 // 1
+```
+
+---
+
+| \gString interpolation
+
+```
+val x = 5
+val y = 6
+println(s"We can interpolate the value of x, which is $x into the string")
+println(s"The sum of x and y is ${x + y}")
+```
+
+---
+
+| \gNon-painful datastructure initialization
+
+\bList<Integer> xs = new ArrayList<>(Arrays.asList(1, 3, 5));
+
+/
+
+```
+val xs = List(1, 3, 5)
+
+xs == (1 to 5 by 2) // true
+```
+
+---
+
+
+\bHashMap<String, String> h = new HashMap<String, Integer>() {{ put("a", 1); }};
+
+/
+
+```
+val s2i = Map("a" ->  1)
+
+s2i.withDefaultValue(-1)("b") // -1
+```
+
+---
+
+| \gDefaults and keyword arguments
+
+```
+def addWithDefault(x: Int = 5, y: Int) = { x + y }
+
+addWithDefault(y = 6)
+```
+
+---
+# Why Scala - Language
+
+* "Object-Oriented Meets Functional"
+--
+
+* Powerful & flexible type system
+  * Allows very different styles of programming
+  * Smooth transition from imperative to functional style
+
+--
+* Lean Standard Lib
+  * Immutable by default, mutable when required
+  * Common data structures & utilities
+  * Async primitives (Future)
+
+---
+
+# Why Scala - Platform
+
+* Java Virtual Machine (JVM)
+    * One of the best VMs in terms of performance and stability
+    * Great ecosystem for monitoring, debugging and benchmarks
+--
+* Javascript via **Scala.js**
+    * Full Scala except advanced reflection
+--
+* Native via **Scala Native**
+    * Fast startup & better control over memory
+
+
+---
+
+# Why Scala - Ecosystem
+
+* Use Scala / Java / Kotlin libraries
+    * Great libraries for backend development
+    * First-class client libraries for most domains
+--
+* In Scala ecosystem itself
+    * Libraries that embraces immutability, RT, and lack of reflections
+    * Fluid DSLs enabled by Scala language features
+--
+* Contributions from Twitter, Stripe, REA Group, etc
+
+---
+
+```
+case class Person(name: String, age: Int)
+
+val alice = Person("Alice", 18)
+val bob   = Person("Bob", 18)
+
+alice.age = 15
+```
+--
+```scala
+// immutable copy using structural sharing
+val olderBob = bob.copy(age = 20)
+println(bob)      // prints "Person(Bob, 18)"
+println(olderBob) // prints "Person(Bob, 20)"
+
+val parallelBob = Person("Bob", 18)
+
+// Value equality by default
+bob == parallelBob // true
+bob == alice // false
+```
+---
+
+# Collection - List
+
+```scala
+val numbers = List(1, 2, 3, 4)
+```
+--
+```scala
+val biggerNumbers = numbers.map(n => n * 2)
+val biggerNumbers2 = numbers.map(_ * 2)
+// List(2, 4, 6, 8)
+```
+--
+```scala
+// Immutable! Our list cannot be mutated accidentally
+someFunction(numbers)
+
+// Value equality for collection types too!
+numbers == List(1, 2, 3, 4) // true
+```
+---
+# Collections - Option
+```scala
+// Scala's Option is used to represent nullability
+def parseInt(str: String): Option[Int] = ...
+```
+--
+```scala
+parseInt("1") // Some(1)
+parseInt("nope") // None
+```
+--
+```scala
+def parseAndPlus(str: String): String = {
+  parseInt(str) match {
+    case Some(num) => s"$num plus one is ${num + 1}"
+    case None => "Not a number!"
+  }
+}
+```
+--
+```scala
+parseAndPlus("3")   // "3 plus one is 4"
+parseAndPlus("x")   // "Not a number!"
+```
+
+---
+# Collections - Map
+
+```scala
+// type alias
+type WorldId = String
+// case classes generate hashCode() method automatically
+// which allows you to use them in HashMaps!
+val tracker: Map[Person, WorldId] = Map(
+  alice       -> "42",
+  bob         -> "42",
+  parallelBob -> "1",
+)
+```
+--
+```scala
+tracker.get(alice) // Some("42")
+tracker.get(Person("Tom", 12)) // None
+```
+
+--
+```scala
+// Find the age of everyone from world 42
+tracker
+  .filter((person, world) => world == "42")
+  .map((person, _) => person.age)
+// List(18, 18)
+```
+
+---
+# Example - Using Java APIs
+```scala
+// Option.apply will handle nulls for us
+Option(mightReturnNull()) match {
+  case Some(i) => print(i)
+  case None => println("is null")
+}
+```
+
+--
+```scala
+import scala.collection.JavaConverters._
+
+// someJavaMethod takes java.util.List
+// and returns java.util.Map
+val javaMap = someJavaMethod(scalaList.asJava)
+val scalaMap = javaMap.asScala
+```
+--
+```scala
+try {
+  val date = java.time.LocalDate.parse(input)
+  Right(date.getYear)
+} catch {
+  case e: java.time.format.DateTimeParseException => Left(e)
+}
+```
+
+---
+# Example - Async & Parallel
+
+```scala
+import monix.eval.Task // and some other imports...
+
+// Convert a side effecting function into a task
+val t: Task[Int] = Task {
+  val seconds = Random.nextInt(4) + 1
+  println(s"Waiting for ${seconds}s")
+  Thread.sleep(seconds * 1000)
+  seconds
+}
+```
+--
+```scala
+// Manipulate Tasks as if they are values
+val tasks = List(t, t, t)
+
+// Run our 3 tasks in parallel!
+val grouped: Task[List[Int]] = Task.gather(tasks)
+
+// Run our task at the boundary of our program
+Await.result(grouped.runAsync, 10.seconds)
+```
+---
+# Example - Implicits
+--
+
+```scala
+case class Context(userId: String)
+
+def fetchUserName()(implicit ctx: Context): Task[UserInfo] = {
+  httpGet(s"www.user.com?user_id=${ctx.userId}")
+}
+```
+--
+```scala
+// Usage:
+implicit val myContext = Context("some-user-id")
+
+fetchUserName()
+// no need to pass the context explicitly. It is implicitly passed in
+```
+--
+```scala
+fetchUserName()(Context("another-user-id"))
+```
+---
+
+# Example - Going Functional
+```scala
+// Summarise these balance books!
+val balance1 = Map("John" -> 5, "Mary" -> 10)
+val balance2 = Map("John" -> 5, "Mary" -> 10, "Bob" -> 3)
+```
+
+--
+```scala
+import cats.implicits._
+import cats.kernel.Monoid
+
+// Map[A, B] is a monoid if B is a monoid
+balance1 |+| balance2
+
+// Map(John -> 10, Mary -> 20, Bob -> 3)
+```
+--
+```scala
+val balanceBooks = List(balance1, balance2, balance3)
+
+val result = balanceBooks.fold
+// combine all our balance books into one
+```
+---
+# Example - JSON
+
+```scala
+case class Person(name: String, age: Int)
+object Person {
+  // Using the library Circe
+  implicit val encoder = deriveEncoder[Person]
+  implicit val decoder = deriveDecoder[Person]
+}
+```
+--
+```scala
+// Encoding
+Person("Alice", 20).asJson.noSpaces
+// {"name":"Alice","age":20}
+```
+--
+```scala
+decode[Person]("""{"name": "Alice", "age": 20}""")
+// Right(Person(Alice, 20))
+
+decode[Person]("""{"name": 5}""")
+// Left(DecodingFailure(String, List(DownField(name))))
+```
+---
+# Example - JSON (2)
+```scala
+decodeAccumulating[Person]("""{"name": 0}""")
+//Invalid(NonEmptyList(
+//  DecodingFailure(String, List(DownField(name))),
+//  DecodingFailure(Field not found, List(DownField(age)))
+//))
+```
+--
+```scala
+// Encoding & Decode complex structures
+val jsonObj = Map(
+  "1" -> Person("Alice", 20),
+  "2" -> Person("Bob", 20)
+).asJson.noSpaces
+// {"1":{"name":"Alice","age":20},"2":{"name":"Bob","age":20}}
+```
+--
+```scala
+decode[Map[String, Person]](jsonObj)
+// Right(Map("1" -> Person("Alice",20), "2" -> Person("Bob",20)))
+```
+---
+class: middle, center
+# Scala at Skedulo
+
+---
+# How it started
+
+* Scala was chosen because of JVM + Better Java
+--
+
+* No prior Scala experience
+--
+
+* Lots of blocking, uncontrolled side effects & exceptions
+
+--
+* A major bug due to Future not being referentially transparent
+    * Good motivational example for using IO/Task!
+
+---
+# Today
+
+* Task & FP using Cats
+--
+
+* Write expressive code & use types to help prevent bugs
+--
+
+* Zero NPE, deadlocks or race conditions for the last ~1.5 years
+--
+
+* Continue to learn and experiment
+---
+
+class: middle, center
+
+# Scala Criticisms
+
+---
+
+# Scala Criticisms
+* Slow compile times?
+    * Near-realtime feedback in IDE (IntelliJ)
+    * Use incremental compile & hot JVM (`~compile` in SBT)
+    * Continuous improvements in compilation speed
+
+--
+
+* Implicits are hard to find/debug?
+    * Requires discipline & established convention
+    * Put them in canonical place: the companion object
+
+---
+
+# Scala Criticisms (2)
+* Advanced FP is cumbersome / I want my Zygomorphism
+--
+
+    * e.g. subtyping interferes with type inference or unification
+--
+    * Mixing OO and FP is hard
+    * Gets easier as tools & compiler improve
+--
+    * Free Monads / Extensible Effects / Recursion Schemes all have
+      well documented & battle-tested implementations
+
+---
+# Making Scala work for your team
+--
+
+* Code reviews
+--
+
+* Choose your code convention and libraries based on your team's capabilities
+and goals
+--
+
+* Start small, slow down & share knowledge
+--
+
+* Try new things, but keep it simple
+
+---
+# My personal experience
+
+* Friendly & helpful community with lots of well maintained/documented projects
+--
+
+* Awesome roadmap & transparent development of Scala compiler & friends
+--
+
+* Less time avoiding/fixing bugs == more time solving the actual problem!
+---
+
+class: middle, center
+# Learning Scala
+
+---
+
+# Where do I start?
+
+* **Scala for the Impatient** or **Programming in Scala**
+* https://docs.scala-lang.org/tour/tour-of-scala.html
+* https://scastie.scala-lang.org (REPL)
+* https://www.scala-exercises.org
+* https://gitter.im/scala/scala for help & discussions
+* A real project is the best way to learn!
+
+---
+# Conclusion
+
+* Scala is a production-ready language with amazing ecosystem, tools and community
+--
+
+--
+
+* Come join us!
+
+---
+
+# That's all, folks
+* Questions?
+
+* Find me on:
+    * almostfunctional.com
+    * @jatcwang
+    * Contact me if you need help :)
+---
+
+# Bonus - The production bug
+
+```scala
+function[A]monitor(f: => Future[A]): Future[A] = {
+  // attach a callback when future completes
+  // (handle both successful and unsuccesful result)
+  f.onComplete { res =>
+    ...
+  }
+  f
+}
+
+monitor(Future {
+  println("Hi")
+})
+
+// prints Hi twice :(
+```
+
+---
+# Bonus - Dotty
+
+```scala
+object Main extends App {
+
+  // First class union types!
+  def intOrString(in: Int | String) = {
+    in match {
+      case _: Int => println("Int")
+      case _: String => println("String")
+    }
+  }
+
+  override def main(args: Array[String]) = {
+    intOrString(23)
+    intOrString("hello")
+  }
+}
+```
+
+---
 
 | Static typing is to a good programmer what a spell checker is to a
 |  good writer. -- Peter Van Roy
 
-
-
 ---
-| \g Prelude
 
 We would never do this
 
