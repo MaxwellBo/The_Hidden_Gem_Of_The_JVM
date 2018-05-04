@@ -424,7 +424,6 @@ import monix.eval.Task
 import monix.execution.Scheduler.Implicits.global
 import scala.util.Random
 
-
 // Convert a side effecting function into a task
 val t: Task[Int] = Task {
   val seconds = Random.nextInt(4) + 1
@@ -434,6 +433,7 @@ val t: Task[Int] = Task {
 }
 ```
 ---
+
 ```
 import scala.concurrent.duration._
 import scala.concurrent.Await
@@ -454,7 +454,28 @@ val incremented = grouped.map(times => times.map(_ * 100))
 // Run our task at the boundary of our program
 val result = Await.result(incremented.runAsync, 10.seconds)
 ```
+
 ---
+
+```
+def addRandom(x: Int): Task[Int] = Task {
+  val seconds = Random.nextInt(4) + 1
+  println(s"Waiting for ${seconds}s")
+  Thread.sleep(x + seconds * 1000)
+  seconds
+}
+
+val seq = for {
+  a <- addRandom(1)
+  b <- addRandom(a)
+  c <- addRandom(b)
+} yield c
+
+val result = Await.result(seq.runAsync, 20.seconds)
+```
+
+---
+
 | \gImplicits
 --
 
