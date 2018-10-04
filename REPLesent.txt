@@ -1143,11 +1143,20 @@ No diminishing returns and minimal boilerplate on top,
 ---
 | \g Where do I start? - Libs
 
-* Cats (functional programming abstractions) -
+* Cats (functional programming abstractions, think Haskell standard library) -
   https://typelevel.org/cats/
+
+* http4s (A minimal, idiomatic Scala interface for HTTP, think Python's Flask / WSGI) -
+  https://github.com/http4s/http4s
+
+* Finch (Functional extension of Twitter's RPC system. Bit of a learning curve, but extremely elegant) -
+  https://finagle.github.io/finch/
 
 * FS2 (functional streams for Scala) -
   https://github.com/functional-streams-for-scala/fs2
+
+* sttp (HTTP client, think Python's requests library. Nice for scripting) 
+  https://github.com/softwaremill/sttp
 
 * Doobie (pure functional jdbc layer) -
   https://github.com/tpolecat/doobie
@@ -1161,7 +1170,8 @@ No diminishing returns and minimal boilerplate on top,
 * Squants (quantities, units of measure, dimensions) - 
   https://github.com/typelevel/squants
 
-* Refined (type refinements) - https://github.com/fthomas/refined
+* Refined (type refinements) - 
+  https://github.com/fthomas/refined
 
 * Shapeless (type tags and lots of other goodies) -
   https://github.com/milessabin/shapeless
@@ -1344,23 +1354,37 @@ biggerThan(0).check.unsafeRunSync
 
 | \gWhere do I start? - Resources
 
-- Scala for the Impatient or Programming in Scala (The Red Book)
+- "Scala for the Impatient" or "Programming in Scala", aka The Red Book
 - https://docs.scala-lang.org/tour/tour-of-scala.html
-- https://scastie.scala-lang.org (REPL)
+  + Fantastic Scala feature overview
+- https://scastie.scala-lang.org 
+  + Online REPL
 - https://www.scala-exercises.org
-- https://gitter.im/scala/scala for help & discussions
+  + Small koans for the typelevel ecosystem
+- https://gitter.im/scala/scala
+  + Help & discussions, with specific channels for the various Scala libs
 
 ---
 
 | \gWhere do I start? - Tooling
 
+- scala
+  + https://www.scala-lang.org/
+  + `brew install scala`
 - sbt (Scala Build Tool) 
+  + https://www.scala-sbt.org/
+  + Heavy duty dependency management / task runner / packager (think Rust's Cargo)
   + `brew install sbt`
+- Typelevel Stack template (https://github.com/gvolpe/typelevel-stack.g8)
   + `sbt new gvolpe/typelevel-stack.g8`
+  + Typelevel micro-framework boilerplate (think Python's Flask with lots of bells and whistles)
 - Ammonite REPL
+  - http://ammonite.io/#Ammonite
+  + Turns Scala into a scripting language
   + `brew install ammonite-repl`
-  + `amm --watch --predef <FILE>`
+  + `amm --watch --predef <FILE>.sc` for hot-reloading and REPL based interactive development
 - IntelliJ Scala plugin
+  + https://plugins.jetbrains.com/plugin/1347-scala
 
 ---
 
